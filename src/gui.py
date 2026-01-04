@@ -138,7 +138,17 @@ class MainWindow(QMainWindow):
         # Model and Action
         model_action_layout = QHBoxLayout()
         model_vbox = QVBoxLayout()
-        model_vbox.addWidget(QLabel("MODELO"))
+        
+        model_header_layout = QHBoxLayout()
+        model_header_layout.addWidget(QLabel("MODELO"))
+        model_header_layout.addStretch()
+        
+        manage_keys_link = QLabel('<a href="https://openrouter.ai/keys" style="color: #38bdf8; text-decoration: none; font-size: 10px;">Manage your API keys</a>')
+        manage_keys_link.setOpenExternalLinks(True)
+        model_header_layout.addWidget(manage_keys_link)
+        
+        model_vbox.addLayout(model_header_layout)
+        
         self.model_combo = QComboBox()
         self.model_combo.setEditable(True)
         self.model_combo.addItems([
