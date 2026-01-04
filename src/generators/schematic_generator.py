@@ -1,10 +1,12 @@
 import uuid
+import re
 from jinja2 import Environment, FileSystemLoader
 from src.models.circuit import Circuit
+from src.component_db import ComponentDB
 from pathlib import Path
 
 class SchematicGenerator:
-    BASIC_SYMBOLS = {
+    FALLBACK_SYMBOLS = {
         "Device:R": """    (symbol "Device:R" (pin_numbers hide) (pin_names (offset 0)) (in_bom yes) (on_board yes)
       (property "Reference" "R" (id 0) (at 2.032 0 90) (effects (font (size 1.27 1.27))))
       (property "Value" "R" (id 1) (at 0 0 90) (effects (font (size 1.27 1.27))))
@@ -28,29 +30,66 @@ class SchematicGenerator:
     def __init__(self, template_path: str = "src/generators"):
         self.env = Environment(loader=FileSystemLoader(template_path))
         self.template = self.env.get_template("schematic_template.j2")
+        self.db = ComponentDB()
+
+    def _parse_pin_positions(self, symbol_content: str):
+        """Extrai posições dos pinos para conectar os fios corretamente."""
+        pins = {}
+        # Pattern para pegar (pin ... (at X Y R) ... (number "N" ...)
+        # Simplificado para pegar at e number
+        # Nota: pins podem estar em sub-unidades (symbol "Name_1_1" ...
+        
+        # Estratégia: Encontrar todos os blocos (pin ...) e extrair 'at' e 'number'
+        pin_blocks = re.finditer(r'\(pin\s+[^)]+\s+\(at\s+([-\d\.]+)\s+([-\d\.]+)\s+([-\d\.]+)\)', symbol_content)
+        
+        # Mapear posições por número de pino. 
+        # CUIDADO: O regex acima é frágil se houver quebra de linha dentro do (at
+        # Melhor iterar linha a linha ou usar blocos maiores, mas vamos tentar um regex mais guloso
+        
+        full_pins = re.findall(r'\(pin\s+.*?\)', symbol_content, re.DOTALL)
+        
+        for p_str in full_pins:
+            at_match = re.search(r'\(at\s+([-\d\.]+)\s+([-\d\.]+)\s+([-\d\.]+)\)', p_str)
+            num_match = re.search(r'\(number\s+"([^"]+)"', p_str)
+            
+            if at_match and num_match:
+                x, y, angle = map(float, at_match.groups())
+                num = num_match.group(1)
+                pins[num] = (x, y)
+                
+        return pins
 
     def generate(self, circuit: Circuit, output_file: str):
-        # Mapeamento de pinos padrão (offset em relação ao centro do componente)
-        # Device:R tem pino 1 em (0, -2.54) e pino 2 em (0, 2.54) [Vertical default]
-        pin_map = {
-            "Device:R": {"1": (0, -3.81), "2": (0, 3.81)},
-            "Device:LED": {"1": (0, -2.54), "2": (0, 2.54)},
-            "Device:C": {"1": (0, -2.54), "2": (0, 2.54)},
-        }
-
-        # Preparar dados para o template
         components_data = []
         comp_instances = {}
-        
+        used_symbols = {} # Map full_name -> content
+
+        # 1. Preparar Componentes
         for i, comp in enumerate(circuit.components):
             x, y = 100 + (i * 30), 100
+            
+            # Tenta buscar no DB
+            sym_content = self.db.get_symbol_content(comp.library_ref)
+            if not sym_content:
+                sym_content = self.FALLBACK_SYMBOLS.get(comp.library_ref)
+            
+            if sym_content:
+                used_symbols[comp.library_ref] = sym_content
+            
+            # Descobrir pinagem para wires
+            pin_offsets = self._parse_pin_positions(sym_content) if sym_content else {}
+            # Fallback de pinagem se falhar o parse ou não tiver conteúdo
+            if not pin_offsets:
+                 pin_offsets = {"1": (0, -2.54), "2": (0, 2.54)} # Default vertical
+
             comp_info = {
                 "id": comp.id,
                 "library_ref": comp.library_ref,
                 "value": comp.value,
                 "x": x,
                 "y": y,
-                "uuid": str(uuid.uuid4())
+                "uuid": str(uuid.uuid4()),
+                "pin_offsets": pin_offsets
             }
             components_data.append(comp_info)
             comp_instances[comp.id] = comp_info
@@ -58,17 +97,20 @@ class SchematicGenerator:
         wires = []
         labels = []
         
-        # Gerar fios para as conexões
+        # 2. Gerar Fios
         for net in circuit.nets:
             if len(net.nodes) < 2:
-                # Se só tem um nó, colocar uma label para facilitar futuras conexões
+                # Label para nó único
                 node = net.nodes[0]
                 comp_id, pin_num = node.split(":")
                 if comp_id in comp_instances:
                     c = comp_instances[comp_id]
-                    # Offset do pino
-                    offsets = pin_map.get(c["library_ref"], {"1": (0, 0)})
-                    off_x, off_y = offsets.get(pin_num, (0, 0))
+                    off_x, off_y = c["pin_offsets"].get(str(pin_num), (0, 0))
+                    
+                    # Correção de coordenadas (KiCad Y cresce para baixo)
+                    # O "at" do pino é relativo. Para (at 0 -2.54) significa acima do centro.
+                    # Mas no esquemático, se o símbolo for desenhado normal, é somar.
+                    
                     labels.append({
                         "name": net.name,
                         "x": c["x"] + off_x,
@@ -78,34 +120,30 @@ class SchematicGenerator:
                     })
                 continue
 
-            # Conectar os nós da net
-            prev_point = None
+            # Conectar nós em série (Simples Daisy Chain)
+            # Todo: Melhorar roteamento (Manhattan)
+            points = []
             for node in net.nodes:
                 comp_id, pin_num = node.split(":")
                 if comp_id in comp_instances:
                     c = comp_instances[comp_id]
-                    offsets = pin_map.get(c["library_ref"], {"1": (0, 0)})
-                    off_x, off_y = offsets.get(pin_num, (0, 0))
-                    curr_point = (c["x"] + off_x, c["y"] + off_y)
-                    
-                    if prev_point:
-                        # Criar fio entre os pontos
-                        wires.append({
-                            "x1": prev_point[0], "y1": prev_point[1],
-                            "x2": curr_point[0], "y2": curr_point[1],
-                            "uuid": str(uuid.uuid4())
-                        })
-                    prev_point = curr_point
-
-        used_symbols = set()
-        for comp in circuit.components:
-            if comp.library_ref in self.BASIC_SYMBOLS:
-                used_symbols.add(self.BASIC_SYMBOLS[comp.library_ref])
+                    off_x, off_y = c["pin_offsets"].get(str(pin_num), (0, 0))
+                    points.append((c["x"] + off_x, c["y"] + off_y))
+            
+            # Criar segmentos de fio
+            for k in range(len(points) - 1):
+                p1 = points[k]
+                p2 = points[k+1]
+                wires.append({
+                    "x1": p1[0], "y1": p1[1],
+                    "x2": p2[0], "y2": p2[1],
+                    "uuid": str(uuid.uuid4())
+                })
 
         render_data = {
             "project_uuid": str(uuid.uuid4()),
             "components": components_data,
-            "lib_symbols": list(used_symbols), 
+            "lib_symbols": list(used_symbols.values()), 
             "wires": wires,
             "labels": labels
         }
@@ -118,14 +156,15 @@ class SchematicGenerator:
         return output_file
 
 if __name__ == "__main__":
-    from src.models.circuit import Circuit, Component, Net, PinConnection
+    from src.models.circuit import Circuit, Component, Net
     
     # Teste rápido
     test_circuit = Circuit(
         project_name="Test Gen",
         description="Teste de geração",
         components=[
-            Component(id="R1", type="Res", value="1k", library_ref="Device:R")
+            Component(id="R1", type="Res", value="1k", library_ref="Device:R"),
+            Component(id="D1", type="LED", value="Green", library_ref="Device:LED")
         ],
         nets=[]
     )

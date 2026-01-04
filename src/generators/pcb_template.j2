@@ -1,4 +1,4 @@
-(kicad_pcb (version 20211014) (generator "TextToPCB_AI")
+(kicad_pcb (version 20211014) (generator "KiFlow_AI")
   (uuid {{ project_uuid }})
   (setup
     (stackup
@@ -25,12 +25,16 @@
       (drawzebralinewidth 0.5)
     )
   )
+
+  {% for net in nets %}
+  (net {{ net.id }} "{{ net.name }}")
+  {% endfor %}
+
   {% for footprint in footprints %}
-  (footprint "{{ footprint.library_ref }}" (layer "F.Cu")
-    (at {{ footprint.x }} {{ footprint.y }} {{ footprint.angle }})
-    (property "Reference" "{{ footprint.id }}" (at 0 -2.54 0) (effects (font (size 1.27 1.27))))
-    (property "Value" "{{ footprint.value }}" (at 0 2.54 0) (effects (font (size 1.27 1.27))))
-    (uuid {{ footprint.uuid }})
-  )
+  {{ footprint.content }}
+  {% endfor %}
+
+  {% for drawing in drawings %}
+  {{ drawing }}
   {% endfor %}
 )
