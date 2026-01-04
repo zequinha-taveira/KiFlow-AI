@@ -27,83 +27,150 @@ class MainWindow(QMainWindow):
 
     def setup_styles(self):
         self.setStyleSheet("""
-            QMainWindow { background-color: #1e1e1e; }
-            QLabel { color: #e0e0e0; font-size: 14px; }
-            QTextEdit { background-color: #2d2d2d; color: #ffffff; border: 1px solid #3d3d3d; border-radius: 8px; padding: 10px; font-size: 15px; }
-            QLineEdit { background-color: #2d2d2d; color: #ffffff; border: 1px solid #3d3d3d; border-radius: 4px; padding: 8px; font-size: 13px; }
-            QPushButton { background-color: #0078d4; color: white; border-radius: 6px; padding: 12px; font-weight: bold; }
-            QPushButton#btn_generate { background-color: #28a745; }
-            QComboBox { background-color: #333333; color: white; border: 1px solid #444444; padding: 5px; }
-            QFrame#separator { background-color: #3d3d3d; }
+            QMainWindow { background-color: #0f172a; }
+            QWidget { color: #f8fafc; font-family: 'Inter', 'Segoe UI', sans-serif; }
+            
+            QLabel { color: #94a3b8; font-size: 14px; font-weight: 500; }
+            QLabel#title { color: #f1f5f9; font-weight: 800; font-size: 28px; }
+            
+            QTextEdit { 
+                background-color: #1e293b; 
+                color: #f1f5f9; 
+                border: 1px solid #334155; 
+                border-radius: 12px; 
+                padding: 12px; 
+                font-size: 14px; 
+                selection-background-color: #38bdf8;
+            }
+            QTextEdit:focus { border: 1px solid #38bdf8; background-color: #0f172a; }
+
+            QLineEdit { 
+                background-color: #1e293b; 
+                color: #f1f5f9; 
+                border: 1px solid #334155; 
+                border-radius: 8px; 
+                padding: 10px; 
+                font-size: 13px; 
+            }
+            QLineEdit:focus { border: 1px solid #818cf8; }
+
+            QPushButton { 
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #4f46e5, stop:1 #7c3aed);
+                color: white; 
+                border-radius: 10px; 
+                padding: 14px; 
+                font-weight: bold; 
+                font-size: 13px;
+                border: none;
+            }
+            QPushButton:hover { background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #6366f1, stop:1 #8b5cf6); }
+            QPushButton:pressed { background: #4338ca; }
+            
+            QPushButton#btn_generate { 
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #06b6d4, stop:1 #3b82f6); 
+                font-size: 15px;
+                letter-spacing: 1px;
+            }
+            QPushButton#btn_generate:hover { background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #22d3ee, stop:1 #60a5fa); }
+            QPushButton#btn_generate:disabled { background: #1e293b; color: #475569; }
+
+            QComboBox { 
+                background-color: #1e293b; 
+                color: #f1f5f9; 
+                border: 1px solid #334155; 
+                border-radius: 8px; 
+                padding: 8px; 
+                min-width: 150px;
+            }
+            QComboBox::drop-down { border: none; }
+            QComboBox QAbstractItemView { background-color: #1e293b; color: #f1f5f9; selection-background-color: #334155; }
+
+            QStatusBar { background: #0f172a; color: #94a3b8; border-top: 1px solid #1e293b; }
+            QScrollBar:vertical { border: none; background: #0f172a; width: 8px; border-radius: 4px; }
+            QScrollBar::handle:vertical { background: #334155; border-radius: 4px; }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
         """)
 
     def setup_ui(self):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         main_layout = QVBoxLayout(central_widget)
-        main_layout.setContentsMargins(35, 35, 35, 35)
-        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(40, 40, 40, 40)
+        main_layout.setSpacing(20)
 
-        title_label = QLabel("🚀 KiFlow AI Canvas")
-        title_label.setFont(QFont("Segoe UI", 24, QFont.Bold))
-        main_layout.addWidget(title_label)
+        header_layout = QHBoxLayout()
+        title_label = QLabel("🌊 KiFlow AI")
+        title_label.setObjectName("title")
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        
+        status_indicator = QLabel("● SYSTEM READY")
+        status_indicator.setStyleSheet("color: #10b981; font-weight: bold; font-size: 11px;")
+        header_layout.addWidget(status_indicator)
+        main_layout.addLayout(header_layout)
 
         # Main Content with Splitter
         self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.setChildrenCollapsible(False)
         
         # Left Panel (Controls and Logs)
         self.left_panel = QWidget()
         self.left_layout = QVBoxLayout(self.left_panel)
-        self.left_layout.setContentsMargins(0, 0, 10, 0)
+        self.left_layout.setContentsMargins(0, 0, 15, 0)
+        self.left_layout.setSpacing(15)
 
-        # Config Section (API Key)
-        config_layout = QHBoxLayout()
-        config_layout.addWidget(QLabel("OpenRouter API Key:"))
+        # Config Section
+        config_group = QVBoxLayout()
+        config_group.addWidget(QLabel("OPENROUTER / AI API KEY"))
         self.api_key_input = QLineEdit()
         self.api_key_input.setEchoMode(QLineEdit.Password)
-        self.api_key_input.setPlaceholderText("Cole sua chave sk-or-v1-... aqui")
-        # Tenta carregar do env se existir
+        self.api_key_input.setPlaceholderText("Enter your API Key...")
         if os.getenv("OPENROUTER_API_KEY"):
             self.api_key_input.setText(os.getenv("OPENROUTER_API_KEY"))
-        config_layout.addWidget(self.api_key_input)
-        main_layout.addLayout(config_layout)
+        config_group.addWidget(self.api_key_input)
+        self.left_layout.addLayout(config_group)
 
-        main_layout.addWidget(QLabel("Descreva seu hardware:"))
+        self.left_layout.addWidget(QLabel("PROMPT DO HARDWARE"))
         self.prompt_input = QTextEdit()
-        self.prompt_input.setPlaceholderText("Ex: Um divisor de tensão com dois resistores de 10k...")
-        main_layout.addWidget(self.prompt_input)
+        self.prompt_input.setPlaceholderText("Ex: Um teclado mecânico com Raspberry Pi Pico e USB-C...")
+        self.left_layout.addWidget(self.prompt_input)
 
-        control_layout = QHBoxLayout()
+        # Model and Action
+        model_action_layout = QHBoxLayout()
+        model_vbox = QVBoxLayout()
+        model_vbox.addWidget(QLabel("MODELO"))
         self.model_combo = QComboBox()
-        self.model_combo.setEditable(True) # Permite digitar qualquer um dos 37+ modelos
+        self.model_combo.setEditable(True)
         self.model_combo.addItems([
             "AUTO", 
-            "xiaomi/mimo-v2-flash:free",
             "google/gemini-2.0-flash-exp:free",
-            "mistralai/pixtral-12b:free",
-            "meta-llama/llama-3.1-8b-instruct:free",
-            "allenai/olmo-7b-instruct:free",
-            "openrouter/auto",
-            "gpt-4o", 
-            "gpt-3.5-turbo", 
+            "anthropic/claude-3.5-sonnet",
+            "openai/gpt-4o",
+            "deepseek/deepseek-r1",
+            "mistralai/mistral-large-2",
             "Ollama"
         ])
-        self.model_combo.setPlaceholderText("Digite o ID do modelo (ex: google/gemini-pro)")
-        control_layout.addWidget(QLabel("Modelo:"))
-        control_layout.addWidget(self.model_combo)
-        control_layout.addStretch()
+        model_vbox.addWidget(self.model_combo)
+        model_action_layout.addLayout(model_vbox)
         
-        self.btn_generate = QPushButton("GERAR PROJETO COMPLETO")
+        self.btn_generate = QPushButton("GERAR PROJETO")
         self.btn_generate.setObjectName("btn_generate")
-        self.btn_generate.setMinimumWidth(200)
+        self.btn_generate.setMinimumWidth(180)
         self.btn_generate.clicked.connect(self.start_generation)
-        control_layout.addWidget(self.btn_generate)
-        main_layout.addLayout(control_layout)
+        model_action_layout.addWidget(self.btn_generate, 0, Qt.AlignBottom)
+        self.left_layout.addLayout(model_action_layout)
 
+        # Log Section
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
-        self.log_output.setFixedHeight(180)
-        self.log_output.setStyleSheet("background-color: #000000; color: #00ff00; font-family: 'Consolas'; font-size: 13px;")
+        self.log_output.setFixedHeight(200)
+        self.log_output.setStyleSheet("""
+            background-color: #020617; 
+            color: #38bdf8; 
+            font-family: 'Fira Code', 'Consolas', monospace; 
+            font-size: 12px;
+            border: 1px solid #1e293b;
+        """)
         self.left_layout.addWidget(self.log_output)
         
         # Right Panel (Canvas)
@@ -111,11 +178,13 @@ class MainWindow(QMainWindow):
         
         self.splitter.addWidget(self.left_panel)
         self.splitter.addWidget(self.canvas)
-        self.splitter.setStretchFactor(1, 2) # Canvas gets more space
+        self.splitter.setStretchFactor(1, 2)
         
         main_layout.addWidget(self.splitter)
         
-        self.statusBar().showMessage("Sistema Pronto")
+        self.statusBar().showMessage("Ready to build hardware")
+        self.statusBar().setStyleSheet("background: #0f172a; color: #64748b; padding-left: 10px;")
+
 
     def append_log(self, text):
         self.log_output.moveCursor(Qt.TextCursor.End)

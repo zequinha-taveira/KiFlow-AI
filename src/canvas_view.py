@@ -11,40 +11,55 @@ class CanvasView(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(10, 10, 10, 10)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         self.tabs = QTabWidget()
         self.tabs.setStyleSheet("""
-            QTabWidget::pane { border: 1px solid #3d3d3d; border-radius: 5px; background: #2d2d2d; }
-            QTabBar::tab { background: #333333; color: #888888; padding: 10px 20px; border-top-left-radius: 5px; border-top-right-radius: 5px; }
-            QTabBar::tab:selected { background: #2d2d2d; color: #ffffff; border-bottom: 2px solid #0078d4; }
+            QTabWidget::pane { border: 1px solid #1e293b; border-radius: 12px; background: #1e293b; top: -1px; }
+            QTabBar::tab { 
+                background: #0f172a; 
+                color: #64748b; 
+                padding: 12px 24px; 
+                border-top-left-radius: 8px; 
+                border-top-right-radius: 8px; 
+                font-weight: bold;
+                font-size: 11px;
+                letter-spacing: 0.5px;
+                margin-right: 4px;
+            }
+            QTabBar::tab:selected { 
+                background: #1e293b; 
+                color: #38bdf8; 
+                border-bottom: 3px solid #38bdf8; 
+            }
+            QTabBar::tab:hover:!selected { background: #1e293b; color: #94a3b8; }
         """)
 
-        # Tab 1: Architecture (Mermaid / Visualization)
+        # Tab 1: Architecture
         self.arch_view = QTextEdit()
         self.arch_view.setReadOnly(True)
-        self.arch_view.setStyleSheet("background-color: #1e1e1e; color: #dcdcdc; font-family: 'Consolas'; border: none;")
-        self.tabs.addTab(self.arch_view, "🏗️ Arquitetura")
+        self.arch_view.setStyleSheet("background-color: #020617; color: #94a3b8; font-family: 'Fira Code', 'Consolas'; border: none; padding: 20px;")
+        self.tabs.addTab(self.arch_view, "STRUCTURE")
 
         # Tab 2: PCB Preview
         self.pcb_scene = QGraphicsScene()
         self.pcb_view = QGraphicsView(self.pcb_scene)
         self.pcb_view.setRenderHint(Qt.HighQualityAntialiasing if hasattr(Qt, "HighQualityAntialiasing") else Qt.Antialiasing)
-        self.pcb_view.setStyleSheet("background-color: #0b2d0b; border: none;") # Dark green board color
-        self.tabs.addTab(self.pcb_view, "🟢 PCB")
+        self.pcb_view.setStyleSheet("background-color: #020617; border: none;") 
+        self.tabs.addTab(self.pcb_view, "PCB LAYOUT")
 
-        # Tab 3: BOM (Table)
-
-        # Tab 3: BOM (Table)
+        # Tab 3: BOM
         self.bom_table = QTableWidget()
         self.bom_table.setColumnCount(4)
-        self.bom_table.setHorizontalHeaderLabels(["ID", "Componente", "Valor", "Footprint"])
+        self.bom_table.setHorizontalHeaderLabels(["ID", "COMPONENT", "VALUE", "FOOTPRINT"])
         self.bom_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.bom_table.setStyleSheet("""
-            QTableWidget { background-color: #1e1e1e; color: white; gridline-color: #3d3d3d; border: none; }
-            QHeaderView::section { background-color: #333333; color: white; padding: 5px; border: 1px solid #3d3d3d; }
+            QTableWidget { background-color: #1e293b; color: #f1f5f9; gridline-color: #334155; border: none; font-size: 12px; }
+            QHeaderView::section { background-color: #0f172a; color: #94a3b8; padding: 10px; border: none; font-weight: bold; font-size: 10px; }
+            QTableWidget::item { padding: 10px; }
+            QTableWidget::item:selected { background-color: #334155; color: #38bdf8; }
         """)
-        self.tabs.addTab(self.bom_table, "🛒 BOM")
+        self.tabs.addTab(self.bom_table, "BILL OF MATERIALS")
 
         layout.addWidget(self.tabs)
 

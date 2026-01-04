@@ -25,20 +25,37 @@ class GenerationBridge:
 
         log("🚀 Iniciando Pipeline Level 3 (Autônomo & Realístico)...")
         
-        # Prompt Inicial
+        log("🧠 Planejando arquitetura de hardware...")
+        reasoning_prompt = f"""
+        Analise a descrição do hardware e planeje a arquitetura:
+        {description}
+        
+        Cite os componentes necessários (identificadores KiCad), principais conexões (nets) e bibliotecas recomendadas.
+        Seja técnico e preciso.
+        """
+        reasoning_messages = [{"role": "system", "content": "Você é um engenheiro sênior de hardware KiCad."}, 
+                             {"role": "user", "content": reasoning_prompt}]
+        
+        reasoning_response = self.client.chat_completion(reasoning_messages, callback=log)
+        log("\n---")
+        
+        # Prompt Inicial com o raciocínio incluído
         prompt_context = f"""
-        Você é um engenheiro de hardware KiCad especializado. Converta a descrição em um JSON estruturado.
-        Texto: {description}
+        Com base no planejamento abaixo, converta o design em um JSON estruturado para KiCad 8.0.
+        
+        Planejamento:
+        {reasoning_response}
+        
         Retorne APENAS o JSON no formato:
             {{
                 "project_name": "...",
                 "description": "...",
-                "mermaid": "graph TD; A[MCU] --> B[Power]; ... (Architecture Diagram)",
-                "components": [{{ "id": "R1", "type": "Resistor", "value": "10k", "library_ref": "Device:R", "connections": [{{ "pin_number": "1", "net_name": "GND" }}] }}],
-                "nets": [{{ "name": "GND", "nodes": ["R1:1"] }}]
+                "mermaid": "graph TD; ... (Diagrama de Fluxo Mermaid)",
+                "components": [{{ "id": "U1", "type": "MCU", "value": "ESP32", "library_ref": "MCU_Espressif:ESP32-WROOM-32", "footprint": "...", "connections": [{{ "pin_number": "1", "net_name": "GND" }}] }}],
+                "nets": [{{ "name": "GND", "nodes": ["U1:1", "C1:2"] }}]
             }}
         """
-        messages = [{"role": "system", "content": "Você é um expert em hardware KiCad."}, 
+        messages = [{"role": "system", "content": "Você é um expert em hardware KiCad. Responda apenas com JSON válido."}, 
                     {"role": "user", "content": prompt_context}]
         
         repair_attempts = 2

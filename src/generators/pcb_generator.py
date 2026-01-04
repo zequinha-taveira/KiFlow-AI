@@ -71,11 +71,11 @@ class PCBGenerator:
         coords = {c.id: {"x": random.uniform(50, 150), "y": random.uniform(50, 150)} for c in components}
         velocities = {c.id: {"x": 0.0, "y": 0.0} for c in components}
         
-        # Parâmetros
-        iterations = 50
-        repulsion = 400.0
-        attraction = 0.05
-        damping = 0.8
+        # Parâmetros otimizados para Level 3 (Premium)
+        iterations = 80
+        repulsion = 600.0
+        attraction = 0.08
+        damping = 0.85
         
         # Conexões (adjacência ponderada pelo número de caminhos entre componentes)
         adj = {}
@@ -85,7 +85,7 @@ class PCBGenerator:
                 for c2 in nodes[i+1:]:
                     if c1 == c2: continue
                     pair = tuple(sorted((c1, c2)))
-                    adj[pair] = adj.get(pair, 0) + 1
+                    adj[pair] = adj.get(pair, 0) + 2 # Peso maior para conexões reais
 
         for _ in range(iterations):
             forces = {c.id: {"x": 0.0, "y": 0.0} for c in components}
@@ -170,15 +170,23 @@ class PCBGenerator:
             footprints_data.append({"content": final_content})
 
         # 4. Geometry (Edge.Cuts)
-        margin = 10
+        margin = 15
         b_x1, b_y1 = min_x - margin, min_y - margin
         b_x2, b_y2 = max_x + margin, max_y + margin
         
+        # Garantir tamanho mínimo (50x50 mm)
+        if (b_x2 - b_x1) < 50:
+            diff = 50 - (b_x2 - b_x1)
+            b_x1 -= diff/2; b_x2 += diff/2
+        if (b_y2 - b_y1) < 50:
+            diff = 50 - (b_y2 - b_y1)
+            b_y1 -= diff/2; b_y2 += diff/2
+
         drawings = [
-            f'(gr_line (start {b_x1} {b_y1}) (end {b_x2} {b_y1}) (layer "Edge.Cuts") (width 0.1))',
-            f'(gr_line (start {b_x2} {b_y1}) (end {b_x2} {b_y2}) (layer "Edge.Cuts") (width 0.1))',
-            f'(gr_line (start {b_x2} {b_y2}) (end {b_x1} {b_y2}) (layer "Edge.Cuts") (width 0.1))',
-            f'(gr_line (start {b_x1} {b_y2}) (end {b_x1} {b_y1}) (layer "Edge.Cuts") (width 0.1))',
+            f'(gr_line (start {b_x1} {b_y1}) (end {b_x2} {b_y1}) (layer "Edge.Cuts") (width 0.15))',
+            f'(gr_line (start {b_x2} {b_y1}) (end {b_x2} {b_y2}) (layer "Edge.Cuts") (width 0.15))',
+            f'(gr_line (start {b_x2} {b_y2}) (end {b_x1} {b_y2}) (layer "Edge.Cuts") (width 0.15))',
+            f'(gr_line (start {b_x1} {b_y2}) (end {b_x1} {b_y1}) (layer "Edge.Cuts") (width 0.15))',
         ]
 
         render_data = {
