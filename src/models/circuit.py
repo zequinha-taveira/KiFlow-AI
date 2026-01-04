@@ -20,6 +20,7 @@ class Net(BaseModel):
 class Circuit(BaseModel):
     project_name: str
     description: str
+    mermaid: Optional[str] = Field(None, description="Diagrama de blocos em formato Mermaid")
     components: List[Component]
     nets: List[Net]
 

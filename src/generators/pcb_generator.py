@@ -191,7 +191,13 @@ class PCBGenerator:
         content = self.template.render(render_data)
         with open(output_file, "w", encoding="utf-8") as f:
             f.write(content)
-        return output_file
+            
+        # Return layout data for visualization
+        layout_data = {
+            "components": [{ "id": c.id, "x": final_coords[c.id]["x"], "y": final_coords[c.id]["y"], "type": c.type } for c in circuit.components],
+            "board": { "x": b_x1, "y": b_y1, "width": b_x2 - b_x1, "height": b_y2 - b_y1 }
+        }
+        return output_file, layout_data
 
 if __name__ == "__main__":
     from src.models.circuit import Circuit, Component, Net, PinConnection

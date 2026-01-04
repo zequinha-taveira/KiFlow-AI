@@ -13,14 +13,15 @@ class GenerationBridge:
         self.sch_gen = SchematicGenerator()
         self.pcb_gen = PCBGenerator()
         from src.generators.bom_generator import BOMGenerator
-        from src.generators.firmware_generator import FirmwareGenerator
         self.bom_gen = BOMGenerator()
-        self.firm_gen = FirmwareGenerator()
 
-    def process(self, description: str, callback=None):
+    def process(self, description: str, callback=None, canvas_callback=None):
         def log(msg):
             if callback: callback(msg)
             print(msg)
+
+        def update_canvas(type, data):
+            if canvas_callback: canvas_callback(type, data)
 
         log("🚀 Iniciando Pipeline Level 3 (Autônomo & Realístico)...")
         
@@ -29,12 +30,13 @@ class GenerationBridge:
         Você é um engenheiro de hardware KiCad especializado. Converta a descrição em um JSON estruturado.
         Texto: {description}
         Retorne APENAS o JSON no formato:
-        {{
-            "project_name": "...",
-            "description": "...",
-            "components": [{{ "id": "R1", "type": "Resistor", "value": "10k", "library_ref": "Device:R", "connections": [{{ "pin_number": "1", "net_name": "GND" }}] }}],
-            "nets": [{{ "name": "GND", "nodes": ["R1:1"] }}]
-        }}
+            {{
+                "project_name": "...",
+                "description": "...",
+                "mermaid": "graph TD; A[MCU] --> B[Power]; ... (Architecture Diagram)",
+                "components": [{{ "id": "R1", "type": "Resistor", "value": "10k", "library_ref": "Device:R", "connections": [{{ "pin_number": "1", "net_name": "GND" }}] }}],
+                "nets": [{{ "name": "GND", "nodes": ["R1:1"] }}]
+            }}
         """
         messages = [{"role": "system", "content": "Você é um expert em hardware KiCad."}, 
                     {"role": "user", "content": prompt_context}]
@@ -62,6 +64,13 @@ class GenerationBridge:
                 data = json.loads(json_str)
                 circuit = Circuit(**data)
                 base_name = circuit.project_name.lower().replace(" ", "_")
+
+                # Atualiza o Canvas com o diagrama e BOM inicial
+                if "mermaid" in data:
+                    update_canvas("arch", data["mermaid"])
+                
+                initial_bom = [{"id": c.id, "type": c.type, "value": c.value, "footprint": c.footprint} for c in circuit.components]
+                update_canvas("bom", initial_bom)
 
                 # Refinamento de Componentes via DB
                 from src.component_db import ComponentDB
@@ -121,14 +130,12 @@ class GenerationBridge:
             with open(f"{base_name}.kicad_pro", "w", encoding="utf-8") as f: f.write(pro_content)
 
             self.sch_gen.generate(circuit, f"{base_name}.kicad_sch")
-            self.pcb_gen.generate(circuit, f"{base_name}.kicad_pcb")
+            pcb_file, layout_data = self.pcb_gen.generate(circuit, f"{base_name}.kicad_pcb")
+            update_canvas("pcb", layout_data)
 
             # 5. Novas Funcionalidades Level 3
             log("🛒 Gerando BOM (Base de Materiais) com preços reais...")
             self.bom_gen.generate(circuit, f"{base_name}_bom.csv")
-
-            log("💻 Gerando Firmware de inicialização (.ino)...")
-            self.firm_gen.generate(circuit, f"{base_name}_firmware.ino")
 
             # IPC & DSN
             from src.generators.ipc356_generator import IPC356Generator
@@ -137,7 +144,7 @@ class GenerationBridge:
             DSNGenerator().generate(circuit, f"{base_name}.dsn")
             
             log(f"✅ Projeto completo criado com sucesso: {base_name}.kicad_pro")
-            return True, f"Sucesso! Projeto '{circuit.project_name}' pronto com BOM e Firmware."
+            return True, f"Sucesso! Projeto '{circuit.project_name}' pronto com BOM."
             
         except Exception as e:
             error_msg = f"Erro na geração final: {str(e)}"

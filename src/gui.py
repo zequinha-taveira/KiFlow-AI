@@ -7,10 +7,15 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PySide6.QtCore import Qt, QSize, Signal, QObject
 from PySide6.QtGui import QFont, QColor, QPalette
 from src.bridge import GenerationBridge
+from src.canvas_view import CanvasView
+from PySide6.QtWidgets import QSplitter
 
 class WorkerSignals(QObject):
     log = Signal(str)
     finished = Signal(bool, str)
+    update_arch = Signal(str)
+    update_bom = Signal(list)
+    update_pcb = Signal(dict)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -39,9 +44,17 @@ class MainWindow(QMainWindow):
         main_layout.setContentsMargins(35, 35, 35, 35)
         main_layout.setSpacing(15)
 
-        title_label = QLabel("🚀 AI Hardware Generator")
-        title_label.setFont(QFont("Segoe UI", 22, QFont.Bold))
+        title_label = QLabel("🚀 KiFlow AI Canvas")
+        title_label.setFont(QFont("Segoe UI", 24, QFont.Bold))
         main_layout.addWidget(title_label)
+
+        # Main Content with Splitter
+        self.splitter = QSplitter(Qt.Horizontal)
+        
+        # Left Panel (Controls and Logs)
+        self.left_panel = QWidget()
+        self.left_layout = QVBoxLayout(self.left_panel)
+        self.left_layout.setContentsMargins(0, 0, 10, 0)
 
         # Config Section (API Key)
         config_layout = QHBoxLayout()
@@ -90,8 +103,17 @@ class MainWindow(QMainWindow):
         self.log_output = QTextEdit()
         self.log_output.setReadOnly(True)
         self.log_output.setFixedHeight(180)
-        self.log_output.setStyleSheet("background-color: #000000; color: #00ff00; font-family: 'Consolas';")
-        main_layout.addWidget(self.log_output)
+        self.log_output.setStyleSheet("background-color: #000000; color: #00ff00; font-family: 'Consolas'; font-size: 13px;")
+        self.left_layout.addWidget(self.log_output)
+        
+        # Right Panel (Canvas)
+        self.canvas = CanvasView()
+        
+        self.splitter.addWidget(self.left_panel)
+        self.splitter.addWidget(self.canvas)
+        self.splitter.setStretchFactor(1, 2) # Canvas gets more space
+        
+        main_layout.addWidget(self.splitter)
         
         self.statusBar().showMessage("Sistema Pronto")
 
@@ -115,11 +137,15 @@ class MainWindow(QMainWindow):
 
         self.btn_generate.setEnabled(False)
         self.log_output.clear()
+        self.canvas.clear()
         model = self.model_combo.currentText()
         
         self.signals = WorkerSignals()
         self.signals.log.connect(self.append_log)
         self.signals.finished.connect(self.on_finished)
+        self.signals.update_arch.connect(self.canvas.update_architecture)
+        self.signals.update_bom.connect(self.canvas.update_bom)
+        self.signals.update_pcb.connect(self.canvas.update_pcb)
         
         threading.Thread(target=self.run_bridge, args=(prompt, model)).start()
 
@@ -127,7 +153,14 @@ class MainWindow(QMainWindow):
         cwd = os.getcwd()
         bridge = GenerationBridge(model=model)
         self.signals.log.emit(f"Modo: {model} | Destino: {cwd}")
-        success, message = bridge.process(prompt, callback=self.signals.log.emit)
+        
+        # Callbacks para o canvas
+        def canvas_callback(type, data):
+            if type == "arch": self.signals.update_arch.emit(data)
+            elif type == "bom": self.signals.update_bom.emit(data)
+            elif type == "pcb": self.signals.update_pcb.emit(data)
+
+        success, message = bridge.process(prompt, callback=self.signals.log.emit, canvas_callback=canvas_callback)
         self.signals.finished.emit(success, message)
 
     def on_finished(self, success, message):
