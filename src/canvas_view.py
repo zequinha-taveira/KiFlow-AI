@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (QWidget, QVBoxLayout, QTabWidget, QTextEdit,
                              QTableWidget, QTableWidgetItem, QHeaderView, QLabel,
                              QGraphicsView, QGraphicsScene, QGraphicsRectItem, QGraphicsTextItem)
 from PySide6.QtCore import Qt, QRectF
-from PySide6.QtGui import QFont, QColor, QPen, QBrush
+from PySide6.QtGui import QFont, QColor, QPen, QBrush, QPainter
 
 class CanvasView(QWidget):
     def __init__(self):
@@ -44,7 +44,7 @@ class CanvasView(QWidget):
         # Tab 2: PCB Preview
         self.pcb_scene = QGraphicsScene()
         self.pcb_view = QGraphicsView(self.pcb_scene)
-        self.pcb_view.setRenderHint(Qt.HighQualityAntialiasing if hasattr(Qt, "HighQualityAntialiasing") else Qt.Antialiasing)
+        self.pcb_view.setRenderHint(QPainter.Antialiasing) 
         self.pcb_view.setStyleSheet("background-color: #020617; border: none;") 
         self.tabs.addTab(self.pcb_view, "PCB LAYOUT")
 
