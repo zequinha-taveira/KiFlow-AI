@@ -1,0 +1,33 @@
+(kicad_sch (version 20211014) (generator "TextToPCB_AI")
+  (uuid {{ project_uuid }})
+  (paper "A4")
+  (lib_symbols
+    {% for symbol in lib_symbols %}
+    {{ symbol }}
+    {% endfor %}
+  )
+  {% for component in components %}
+  (symbol (lib_id "{{ component.library_ref }}") (at {{ component.x }} {{ component.y }} 0) (unit 1)
+    (in_bom yes) (on_board yes)
+    (uuid {{ component.uuid }})
+    (property "Reference" "{{ component.id }}" (id 0) (at {{ component.x + 2 }} {{ component.y }} 90)
+      (effects (font (size 1.27 1.27)))
+    )
+    (property "Value" "{{ component.value }}" (id 1) (at {{ component.x }} {{ component.y }} 90)
+      (effects (font (size 1.27 1.27)))
+    )
+  )
+  {% endfor %}
+  {% for wire in wires %}
+  (wire (pts (xy {{ wire.x1 }} {{ wire.y1 }}) (xy {{ wire.x2 }} {{ wire.y2 }}))
+    (stroke (width 0) (type default) (color 0 0 0 0))
+    (uuid {{ wire.uuid }})
+  )
+  {% endfor %}
+  {% for label in labels %}
+  (label "{{ label.name }}" (at {{ label.x }} {{ label.y }} {{ label.angle }})
+    (effects (font (size 1.27 1.27)) (justify left))
+    (uuid {{ label.uuid }})
+  )
+  {% endfor %}
+)

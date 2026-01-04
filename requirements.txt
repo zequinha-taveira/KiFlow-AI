@@ -1,0 +1,8 @@
+openai
+python-dotenv
+pydantic
+requests
+click
+kiutils
+jinja2
+sqlite3-api
