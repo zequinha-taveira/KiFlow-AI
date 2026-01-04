@@ -22,6 +22,10 @@ gen_*/
 *.ipc
 *.dsn
 *.ses
+*.kicad_sch
+*.kicad_pcb
+*.kicad_pro
+*.kicad_prl
 
 # IDEs
 .vscode/
